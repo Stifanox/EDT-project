@@ -1,0 +1,7 @@
+Sztuczna inteligencja w diagnostyce medycznej
+
+Algorytmy uczenia maszynowego coraz częściej wspierają lekarzy w analizie zdjęć rentgenowskich, tomografii komputerowej i obrazów histopatologicznych. Sieci neuronowe potrafią wskazać zmiany nowotworowe w płucach lub w piersi z dokładnością porównywalną z doświadczonym radiologiem.
+
+W Polsce projekty z tego obszaru rozwijają m.in. Politechnika Warszawska, Uniwersytet Medyczny w Łodzi oraz startupy współpracujące ze szpitalami. Ministerstwo Zdrowia analizuje, jak włączyć takie narzędzia do systemu ochrony zdrowia.
+
+Specjaliści zwracają jednak uwagę na ryzyka: modele mogą powielać błędy obecne w danych treningowych, a odpowiedzialność za decyzję diagnostyczną musi pozostać po stronie człowieka. Unia Europejska w akcie o sztucznej inteligencji (AI Act) zaliczyła systemy medyczne do kategorii wysokiego ryzyka, co oznacza dodatkowe wymagania dotyczące przejrzystości i nadzoru.

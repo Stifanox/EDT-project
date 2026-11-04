@@ -1,0 +1,7 @@
+Artificial Intelligence in Healthcare
+
+Machine learning models are increasingly used to support doctors in reading medical images. Deep neural networks can detect diabetic retinopathy in photographs of the retina or flag suspicious lesions in mammograms, sometimes matching the accuracy of experienced specialists.
+
+Companies such as Google DeepMind and research hospitals like the Mayo Clinic have published studies on AI-assisted diagnosis. In 2018 the U.S. Food and Drug Administration (FDA) authorised IDx-DR, one of the first autonomous AI systems for detecting eye disease.
+
+However, experts caution that algorithms trained on data from one population may perform worse on another, and that clinicians must remain responsible for final decisions. Regulators in the European Union classify most medical AI systems as high-risk under the AI Act, requiring transparency, human oversight and careful validation.

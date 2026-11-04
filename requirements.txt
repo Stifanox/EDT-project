@@ -1,0 +1,21 @@
+# --- rdzeń (P0) ---
+streamlit>=1.40
+pandas>=2.2
+
+# --- dokumenty (O1: D1) ---
+pypdf>=5.0
+
+# --- wyszukiwanie (O2: S1–S4) ---
+scikit-learn>=1.5
+numpy>=1.26
+simplemma>=1.1                 # lematyzacja pl/en (lekka, bez modeli)
+sentence-transformers>=3.0     # ciągnie torch – pierwsza instalacja trwa dłużej
+
+# --- NER (O3: N1) ---
+spacy>=3.8
+# modele spaCy instalowane osobno (patrz README):
+#   python -m spacy download pl_core_news_md
+#   python -m spacy download en_core_web_md
+
+# --- wykresy (O3: N5/N6, O2: S5) ---
+plotly>=5.20
