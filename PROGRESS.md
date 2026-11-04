@@ -11,7 +11,7 @@
 
 | Osoba | Zakres | Etapy ukończone |
 |-------|--------|-----------------|
-| O1 | Fundament, dokumenty, widoki Baza/Dokument | 4 / 7 |
+| O1 | Fundament, dokumenty, widoki Baza/Dokument | 5 / 7 |
 | O2 | Wyszukiwanie i porównanie rankingów | 0 / 7 |
 | O3 | NER, encje, statystyki | 0 / 6 |
 | Wszyscy | Integracja, raport | 0 / 2 |
@@ -34,7 +34,7 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 | [D1](docs/tasks/D1.md) | Parsowanie TXT/PDF i przetwarzanie wstępne | ✅ DONE | 7/7 | !P0 | 2026-11-04 · korpus ma teraz 2 PDF-y |
 | [D2](docs/tasks/D2.md) | Repozytorium SQLite + przechowywanie plików | ✅ DONE | 6/6 | !P0 | 2026-11-04 · dokumenty trwałe w `data/edt.db` |
 | [D3](docs/tasks/D3.md) | Pipeline wczytywania (masowy import, postęp, błędy, start) | ✅ DONE | 6/6 | !D1, !D2 | 2026-11-04 · `ingest_many`, odporność na błędy indekserów |
-| [D4](docs/tasks/D4.md) | Widok „Baza dokumentów” | ⬜ TODO | 0/7 | !P0, ~D3 | |
+| [D4](docs/tasks/D4.md) | Widok „Baza dokumentów” | ✅ DONE | 7/7 | !P0, ~D3 | 2026-11-04 · wzór testów GUI: `tests/test_documents_view.py` |
 | [D5](docs/tasks/D5.md) | Widok „Szczegóły dokumentu” | ⬜ TODO | 0/7 | !P0, ~N3 | |
 | [D6](docs/tasks/D6.md) | (opcjonalnie) Import folderu, eksport, filtry metadanych | ⬜ TODO | 0/4 | ~D4 | |
 

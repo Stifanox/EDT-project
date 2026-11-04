@@ -64,6 +64,11 @@ Ten plik mówi, jak pracować, żeby nie blokować innych i nie psuć ich kodu.
 - Każda implementacja interfejsu musi przejść test kontraktowy w `tests/contracts/`.
 - Testy wymagające modeli ML oznacz `@pytest.mark.slow`. Testy nie mogą wymagać sieci, chyba że są `slow`.
 - Do testów używaj fixture'ów `tiny_docs` / `sample_docs` z `tests/conftest.py`.
+- Testy GUI (`streamlit.testing.v1.AppTest`), wzór w `tests/test_documents_view.py`:
+  start od `app.py` + `at.switch_page("pages/…")` (inaczej `st.switch_page` nie znajdzie stron),
+  `get_services.clear()` przed testem (świeże `AppServices`), zaznaczenie w `st.dataframe` przez
+  `at.session_state[key] = {"selection": {"rows": [...], "columns": [], "cells": []}}`.
+  Upload plików nie jest wspierany przez `AppTest`.
 - Każdy test automatycznie dostaje tymczasowy katalog danych (fixture `isolated_data_dir`).
   Ścieżki (`config.DB_PATH`, `FILES_DIR`, `CACHE_DIR`) czytaj z `config` w chwili użycia.
 
