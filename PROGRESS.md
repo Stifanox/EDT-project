@@ -11,7 +11,7 @@
 
 | Osoba | Zakres | Etapy ukończone |
 |-------|--------|-----------------|
-| O1 | Fundament, dokumenty, widoki Baza/Dokument | 3 / 7 |
+| O1 | Fundament, dokumenty, widoki Baza/Dokument | 4 / 7 |
 | O2 | Wyszukiwanie i porównanie rankingów | 0 / 7 |
 | O3 | NER, encje, statystyki | 0 / 6 |
 | Wszyscy | Integracja, raport | 0 / 2 |
@@ -33,7 +33,7 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 |----|------|--------|--------|------------|-------|
 | [D1](docs/tasks/D1.md) | Parsowanie TXT/PDF i przetwarzanie wstępne | ✅ DONE | 7/7 | !P0 | 2026-11-04 · korpus ma teraz 2 PDF-y |
 | [D2](docs/tasks/D2.md) | Repozytorium SQLite + przechowywanie plików | ✅ DONE | 6/6 | !P0 | 2026-11-04 · dokumenty trwałe w `data/edt.db` |
-| [D3](docs/tasks/D3.md) | Pipeline wczytywania (masowy import, postęp, błędy, start) | ⬜ TODO | 0/6 | !D1, !D2 | |
+| [D3](docs/tasks/D3.md) | Pipeline wczytywania (masowy import, postęp, błędy, start) | ✅ DONE | 6/6 | !D1, !D2 | 2026-11-04 · `ingest_many`, odporność na błędy indekserów |
 | [D4](docs/tasks/D4.md) | Widok „Baza dokumentów” | ⬜ TODO | 0/7 | !P0, ~D3 | |
 | [D5](docs/tasks/D5.md) | Widok „Szczegóły dokumentu” | ⬜ TODO | 0/7 | !P0, ~N3 | |
 | [D6](docs/tasks/D6.md) | (opcjonalnie) Import folderu, eksport, filtry metadanych | ⬜ TODO | 0/4 | ~D4 | |
@@ -88,3 +88,5 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 | 2026-11-04 | O1 | [D1] Nowe zależności: `charset-normalizer` (requirements.txt), `fpdf2` (requirements-dev.txt, tylko generator PDF). `Document.metadata` dla PDF: `title`, `author`, `subject`, `creator`, `producer`, `created` (ISO), `pages_without_text`; dla TXT: `encoding`. |
 | 2026-11-04 | O1 | [D2] Dokumenty trwałe w SQLite (`data/edt.db`, tabela `documents`), oryginały w `data/files/`. `AppServices` ma nowe pole `files: FileStore \| None` i metodę `original_path(doc_id)` (zmiana wstecznie zgodna). `DocumentRepository.add` rzuca `DuplicateDocumentError` przy tej samej treści pod innym `id`. |
 | 2026-11-04 | O1 | [D2] **Ważne dla wszystkich:** `tests/conftest.py` ma fixture autouse `isolated_data_dir`, więc każdy test ma własne `config.DB_PATH`, `FILES_DIR` i `CACHE_DIR` w katalogu tymczasowym. W swoim kodzie czytaj te ścieżki z `config` **w chwili wywołania** (np. `connect(config.DB_PATH)`), a nie przez domyślny argument ustalany przy imporcie. |
+| 2026-11-04 | O1 | [D3] Nowe w `AppServices` (wstecznie zgodne): `ingest_many(files, on_progress) -> IngestReport`, pola `failures` i `stale_indexers`, `rebuild_indexes(only_stale=False) -> list[IndexerFailure]`, `add_document` zwraca listę błędów. `IngestResult` ma pola `warnings` i `seconds`. |
+| 2026-11-04 | O1 | [D3] **Dla O2/O3 (indeksery):** wyjątek z `add_document`/`remove_document`/`rebuild` nie wywraca już aplikacji. Jest logowany, użytkownik dostaje ostrzeżenie, a indekser zostaje oznaczony jako nieaktualny do czasu `rebuild_indexes()`. Dlatego `rebuild(docs)` musi być **idempotentny** i doprowadzać indeks do stanu zgodnego z `docs`. `remove_document` może dostać id, którego indeks nie zna (ma wtedy nic nie robić). |

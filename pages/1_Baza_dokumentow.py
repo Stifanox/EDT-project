@@ -15,9 +15,17 @@ st.info("Szkielet z P0 – pełny widok w etapie **D4**.", icon="🚧")
 uploaded = st.file_uploader("Dodaj dokumenty (TXT, PDF)", type=["txt", "pdf"],
                             accept_multiple_files=True)
 if uploaded and st.button("Wczytaj"):
-    for f in uploaded:
-        res = services.ingest_file(f.name, f.getvalue())
-        (st.success if res.ok else st.warning)(f"{f.name}: " + ("dodano" if res.ok else res.error))
+    bar = st.progress(0.0, text="Wczytywanie…")
+    report = services.ingest_many(
+        ((f.name, f.getvalue()) for f in uploaded),
+        on_progress=lambda i, n, name: bar.progress(i / n, text=f"{i}/{n}: {name}"),
+    )
+    bar.empty()
+    (st.success if not report.errors else st.warning)(report.summary())
+    for r in [*report.duplicates, *report.errors]:
+        st.caption(f"⚠️ {r.filename}: {r.error}")
+    for w in report.warnings:
+        st.caption(f"⚠️ {w}")
 
 docs = services.repository.list()
 st.dataframe(
