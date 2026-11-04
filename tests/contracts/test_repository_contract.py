@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import pytest
 
+from edt.db import connect
 from edt.interfaces import DocumentRepository
-from edt.storage import InMemoryDocumentRepository
+from edt.storage import DuplicateDocumentError, InMemoryDocumentRepository, SqliteDocumentRepository
 
 REPO_FACTORIES = [
     pytest.param(InMemoryDocumentRepository, id="memory"),
-    # pytest.param(lambda: SqliteDocumentRepository(connect(":memory:")), id="sqlite"),
+    pytest.param(lambda: SqliteDocumentRepository(connect(":memory:")), id="sqlite"),
 ]
 
 
@@ -42,3 +43,27 @@ def test_roundtrip_preserves_fields(repo, tiny_docs):
     for f in ("id", "name", "text", "source_type", "language", "size_bytes",
               "num_pages", "content_hash"):
         assert getattr(got, f) == getattr(doc, f), f
+
+
+def test_same_id_overwrites(repo, tiny_docs):
+    from dataclasses import replace
+
+    repo.add(tiny_docs[0])
+    repo.add(replace(tiny_docs[0], name="nowa_nazwa.txt"))
+    assert repo.count() == 1 and repo.get("d1").name == "nowa_nazwa.txt"
+
+
+def test_duplicate_content_rejected(repo, tiny_docs):
+    from dataclasses import replace
+
+    repo.add(tiny_docs[0])
+    with pytest.raises(DuplicateDocumentError):
+        repo.add(replace(tiny_docs[0], id="inne-id"))
+    assert repo.count() == 1
+
+
+def test_missing_and_empty(repo):
+    assert repo.get("nie-ma") is None
+    assert repo.delete("nie-ma") is False
+    assert repo.find_by_hash("") is None
+    assert repo.list() == [] and repo.count() == 0

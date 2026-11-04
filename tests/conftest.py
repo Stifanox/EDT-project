@@ -3,15 +3,31 @@
 from __future__ import annotations
 
 import os
+import tempfile
+from pathlib import Path
 
 import pytest
 
 os.environ.setdefault("EDT_LOAD_SAMPLES", "0")  # testy nie wczytują korpusu samoczynnie
+# Zabezpieczenie: nawet kod czytający config przy imporcie nie dotknie prawdziwego data/.
+os.environ.setdefault("EDT_DATA_DIR", tempfile.mkdtemp(prefix="edt-tests-"))
+os.environ.pop("EDT_DB_PATH", None)
 
+from edt import config  # noqa: E402
 from edt.ingest import parse_file  # noqa: E402
 from edt.models import Document, SourceType, compute_hash  # noqa: E402
 from edt.sample_data import iter_sample_files  # noqa: E402
 from edt.textproc import detect_language, normalize_text  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Każdy test ma własną bazę SQLite, katalog oryginałów i cache."""
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "edt.db")
+    monkeypatch.setattr(config, "FILES_DIR", tmp_path / "files")
+    monkeypatch.setattr(config, "CACHE_DIR", tmp_path / "cache")
+    return tmp_path
 
 
 def make_doc(

@@ -11,8 +11,8 @@ fasadę (`edt/services.py`) oraz **działające zaślepki** każdego modułu. Dz
 
 | Zaślepka (P0) | Zastępuje ją | Etap |
 |---------------|--------------|------|
-| `InMemoryDocumentRepository` | `SqliteDocumentRepository` | D2 (O1) |
-| `parse_pdf` → błąd „nie zaimplementowano” | parser PDF | D1 (O1) |
+| ~~`InMemoryDocumentRepository`~~ | `SqliteDocumentRepository` + `FileStore` (oryginały) ✅ | D2 (O1) |
+| ~~`parse_pdf` → błąd „nie zaimplementowano”~~ | parser PDF ✅ | D1 (O1) |
 | `SubstringSearchEngine` ×3 | `KeywordSearchEngine`, `TfidfSearchEngine`, `SemanticSearchEngine` | S2–S4 (O2) |
 | `RegexEntityExtractor` | `SpacyEntityExtractor` | N1 (O3) |
 | `InMemoryEntityIndex` | `SqliteEntityIndex` (opcjonalnie zostaje in-memory) | N2 (O3) |
@@ -24,7 +24,8 @@ fasadę (`edt/services.py`) oraz **działające zaślepki** każdego modułu. Dz
 ```
                ┌───────────── AppServices (edt/services.py) ─────────────┐
  upload ──▶ ingest_file(name, bytes)                                      │
-            │  parse_file() ─▶ Document ─▶ repository.add()               │
+            │  parse_file() ─▶ Document ─▶ repository.add() (SQLite)      │
+            │                         ├──▶ files.save() (data/files/)     │
             │                         └──▶ for indexer in indexers:       │
             │                                 indexer.add_document(doc)   │
             │        indexers = [*engines.values(), entities]             │

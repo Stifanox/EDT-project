@@ -1,11 +1,12 @@
 """Repozytorium dokumentów w pamięci (P0).
 
-Używane w testach i jako domyślna implementacja do czasu etapu D2 (SQLite).
+Implementacja referencyjna i testowa. W aplikacji używane jest SQLite (D2).
 """
 
 from __future__ import annotations
 
 from edt.models import Document
+from edt.storage.errors import DuplicateDocumentError
 
 
 class InMemoryDocumentRepository:
@@ -13,6 +14,11 @@ class InMemoryDocumentRepository:
         self._docs: dict[str, Document] = {}
 
     def add(self, doc: Document) -> None:
+        if doc.content_hash and (other := self.find_by_hash(doc.content_hash)):
+            if other.id != doc.id:
+                raise DuplicateDocumentError(
+                    f"Dokument o tej samej treści już istnieje: {other.name}"
+                )
         self._docs[doc.id] = doc
 
     def get(self, doc_id: str) -> Document | None:

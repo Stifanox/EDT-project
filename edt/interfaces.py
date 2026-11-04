@@ -22,6 +22,8 @@ class DocumentRepository(Protocol):
     """Trwałe przechowywanie dokumentów i metadanych (właściciel: O1)."""
 
     def add(self, doc: Document) -> None: ...
+        # ten sam id => nadpisanie; ta sama treść (content_hash) pod innym id =>
+        # edt.storage.DuplicateDocumentError
     def get(self, doc_id: str) -> Document | None: ...
     def list(self) -> list[Document]: ...                 # kolejność: od najstarszego
     def delete(self, doc_id: str) -> bool: ...            # True, jeśli usunięto

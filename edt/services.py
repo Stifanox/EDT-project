@@ -4,7 +4,7 @@ GUI korzysta WYŁĄCZNIE z `AppServices` (przez `edt.ui.state.get_services()`),
 nigdy nie tworzy silników / repozytoriów samodzielnie.
 
 Podmiana zaślepki na prawdziwą implementację = edycja JEDNEJ funkcji-fabryki:
-  * `_make_repository()`   – właściciel O1 (etap D2)
+  * `_make_repository()`, `_make_file_store()` – właściciel O1 (etap D2)
   * `_make_engines()`      – właściciel O2 (etapy S2–S4)
   * `_make_entity_index()` – właściciel O3 (etapy N1–N2)
 Nie edytuj fabryk innych osób – unikamy konfliktów w git.
@@ -12,25 +12,35 @@ Nie edytuj fabryk innych osób – unikamy konfliktów w git.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Collection
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from edt import config
 from edt.config import DEFAULT_TOP_K
 from edt.ingest import IngestError, parse_file
 from edt.interfaces import DocumentIndexer, DocumentRepository, EntityIndex, SearchEngine
 from edt.models import Document, SearchResult, compute_hash, new_document_id
+from edt.storage.files import FileStore
 from edt.textproc import detect_language
+
+logger = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
 # Fabryki – każda należy do jednej osoby
 # --------------------------------------------------------------------------- #
 def _make_repository() -> DocumentRepository:  # O1
-    # TODO(D2): return SqliteDocumentRepository(connect())
-    from edt.storage import InMemoryDocumentRepository
+    # config.DB_PATH czytany w chwili wywołania – testy podmieniają go na bazę tymczasową
+    from edt.db import connect
+    from edt.storage import SqliteDocumentRepository
 
-    return InMemoryDocumentRepository()
+    return SqliteDocumentRepository(connect(config.DB_PATH))
+
+
+def _make_file_store() -> FileStore | None:  # O1
+    return FileStore(config.FILES_DIR)
 
 
 def _make_engines() -> dict[str, SearchEngine]:  # O2
@@ -73,6 +83,7 @@ class AppServices:
     engines: dict[str, SearchEngine]
     entities: EntityIndex
     extra_indexers: list[DocumentIndexer] = field(default_factory=list)
+    files: FileStore | None = None  # oryginały plików (None => nie przechowujemy)
 
     @property
     def indexers(self) -> list[DocumentIndexer]:
@@ -80,8 +91,8 @@ class AppServices:
 
     # --- dokumenty -------------------------------------------------------- #
     def ingest_file(self, filename: str, data: bytes) -> IngestResult:
-        """Wczytaj plik -> Document -> zapis w repozytorium -> powiadom indeksery.
-        TODO(D3): obsługa postępu, zapis oryginału w data/files, lepsze metadane."""
+        """Wczytaj plik -> Document -> zapis w repozytorium + oryginał -> powiadom indeksery.
+        TODO(D3): import wielu plików z postępem, odporność na błędy indekserów."""
         content_hash = compute_hash(data)
         if existing := self.repository.find_by_hash(content_hash):
             return IngestResult(filename, duplicate_of=existing,
@@ -102,6 +113,11 @@ class AppServices:
             metadata=parsed.metadata,
         )
         self.add_document(doc)
+        if self.files is not None:
+            try:
+                self.files.save(doc.id, filename, data)
+            except OSError:  # brak oryginału nie unieważnia dokumentu
+                logger.warning("Nie zapisano oryginału %s", filename, exc_info=True)
         return IngestResult(filename, document=doc)
 
     def add_document(self, doc: Document) -> None:
@@ -114,7 +130,13 @@ class AppServices:
         if deleted:
             for indexer in self.indexers:
                 indexer.remove_document(doc_id)
+        if self.files is not None:
+            self.files.delete(doc_id)
         return deleted
+
+    def original_path(self, doc_id: str) -> Path | None:
+        """Ścieżka oryginalnego pliku (do pobrania w widoku dokumentu) lub None."""
+        return self.files.path(doc_id) if self.files is not None else None
 
     def rebuild_indexes(self) -> None:
         docs = self.repository.list()
@@ -149,7 +171,10 @@ def build_services(load_samples: bool | None = None) -> AppServices:
         repository=_make_repository(),
         engines=_make_engines(),
         entities=_make_entity_index(),
+        files=_make_file_store(),
     )
+    if services.files is not None:
+        services.files.prune({d.id for d in services.repository.list()})
     if load_samples and services.repository.count() == 0:
         from edt.sample_data import iter_sample_files
 

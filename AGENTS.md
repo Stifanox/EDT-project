@@ -19,7 +19,7 @@ Ten plik mówi, jak pracować, żeby nie blokować innych i nie psuć ich kodu.
 
 | Właściciel | Pliki |
 |------------|-------|
-| **O1** | `edt/ingest/**`, `edt/storage/**`, `edt/ui/documents_view.py`, `pages/1_Baza_dokumentow.py`, `pages/5_Dokument.py`, `app.py`, w `edt/services.py`: fabryka `_make_repository()` oraz metody dokumentowe `AppServices` (`ingest_*`, `add_document`, `delete_document`, `rebuild_indexes`), `tests/test_ingest*.py`, `tests/test_storage*.py`, `tests/fixtures/pdf/**`, `scripts/make_sample_pdfs.py`, `data/sample/**` |
+| **O1** | `edt/ingest/**`, `edt/storage/**`, `edt/ui/documents_view.py`, `pages/1_Baza_dokumentow.py`, `pages/5_Dokument.py`, `app.py`, w `edt/services.py`: fabryki `_make_repository()`, `_make_file_store()` oraz metody dokumentowe `AppServices` (`ingest_*`, `add_document`, `delete_document`, `original_path`, `rebuild_indexes`), `tests/test_ingest*.py`, `tests/test_storage*.py`, `tests/fixtures/pdf/**`, `scripts/make_sample_pdfs.py`, `data/sample/**` |
 | **O2** | `edt/search/**`, `edt/ui/search_view.py`, `pages/2_Wyszukiwarka.py`, fabryka `_make_engines()` w `edt/services.py`, `tests/test_search*.py`, lista `ENGINE_FACTORIES` w `tests/contracts/test_search_engine_contract.py` |
 | **O3** | `edt/ner/**`, `edt/stats/**`, `edt/ui/entities.py`, `pages/3_Encje_NER.py`, `pages/4_Statystyki.py`, fabryka `_make_entity_index()` w `edt/services.py`, `tests/test_ner*.py`, `tests/test_stats*.py`, lista `INDEX_FACTORIES` w `tests/contracts/test_entity_index_contract.py` |
 | **Wspólne (kontrakty)** | `edt/models.py`, `edt/interfaces.py`, `edt/config.py`, `edt/textproc.py`¹, `edt/db.py`, `edt/ui/components.py`, `edt/ui/nav.py`, `edt/ui/state.py`, pozostała część `edt/services.py` (np. `search_all`), `tests/conftest.py`, `PROGRESS.md` (każdy tylko swoją sekcję) |
@@ -64,6 +64,8 @@ Ten plik mówi, jak pracować, żeby nie blokować innych i nie psuć ich kodu.
 - Każda implementacja interfejsu musi przejść test kontraktowy w `tests/contracts/`.
 - Testy wymagające modeli ML oznacz `@pytest.mark.slow`. Testy nie mogą wymagać sieci, chyba że są `slow`.
 - Do testów używaj fixture'ów `tiny_docs` / `sample_docs` z `tests/conftest.py`.
+- Każdy test automatycznie dostaje tymczasowy katalog danych (fixture `isolated_data_dir`).
+  Ścieżki (`config.DB_PATH`, `FILES_DIR`, `CACHE_DIR`) czytaj z `config` w chwili użycia.
 
 ## 6. Zakończenie etapu (Definition of Done)
 
