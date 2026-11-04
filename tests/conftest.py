@@ -8,18 +8,21 @@ import pytest
 
 os.environ.setdefault("EDT_LOAD_SAMPLES", "0")  # testy nie wczytują korpusu samoczynnie
 
+from edt.ingest import parse_file  # noqa: E402
 from edt.models import Document, SourceType, compute_hash  # noqa: E402
 from edt.sample_data import iter_sample_files  # noqa: E402
 from edt.textproc import detect_language, normalize_text  # noqa: E402
 
 
-def make_doc(doc_id: str, text: str, name: str | None = None) -> Document:
+def make_doc(
+    doc_id: str, text: str, name: str | None = None, source_type: SourceType = SourceType.TXT
+) -> Document:
     text = normalize_text(text)
     return Document(
         id=doc_id,
         name=name or f"{doc_id}.txt",
         text=text,
-        source_type=SourceType.TXT,
+        source_type=source_type,
         language=detect_language(text),
         size_bytes=len(text.encode()),
         content_hash=compute_hash(text.encode()),
@@ -39,8 +42,9 @@ def tiny_docs() -> list[Document]:
 
 @pytest.fixture(scope="session")
 def sample_docs() -> list[Document]:
-    """Korpus z data/sample (PL + EN)."""
-    return [
-        make_doc(f"s{i}", data.decode("utf-8"), name)
-        for i, (name, data) in enumerate(iter_sample_files())
-    ]
+    """Korpus z data/sample (PL + EN, TXT + PDF) – wczytany parserem z edt.ingest."""
+    docs = []
+    for i, (name, data) in enumerate(iter_sample_files()):
+        parsed = parse_file(name, data)
+        docs.append(make_doc(f"s{i}", parsed.text, name, parsed.source_type))
+    return docs

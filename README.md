@@ -26,7 +26,7 @@ streamlit run app.py
 ```
 
 Przy pierwszym uruchomieniu (pusta baza) aplikacja sama wczytuje przykładowy korpus z `data/sample/`
-(10 krótkich tekstów PL/EN). Wyłączysz to zmienną `EDT_LOAD_SAMPLES=0`.
+(12 krótkich dokumentów PL/EN: 10 TXT + 2 PDF). Wyłączysz to zmienną `EDT_LOAD_SAMPLES=0`.
 
 Model semantyczny (`paraphrase-multilingual-MiniLM-L12-v2`, ok. 470 MB) pobiera się automatycznie przy
 pierwszym użyciu (etap S4).

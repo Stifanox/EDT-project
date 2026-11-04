@@ -11,7 +11,7 @@
 
 | Osoba | Zakres | Etapy ukończone |
 |-------|--------|-----------------|
-| O1 | Fundament, dokumenty, widoki Baza/Dokument | 1 / 7 |
+| O1 | Fundament, dokumenty, widoki Baza/Dokument | 2 / 7 |
 | O2 | Wyszukiwanie i porównanie rankingów | 0 / 7 |
 | O3 | NER, encje, statystyki | 0 / 6 |
 | Wszyscy | Integracja, raport | 0 / 2 |
@@ -31,7 +31,7 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 
 | ID | Etap | Status | Postęp | Zależności | Uwagi |
 |----|------|--------|--------|------------|-------|
-| [D1](docs/tasks/D1.md) | Parsowanie TXT/PDF i przetwarzanie wstępne | ⬜ TODO | 0/7 | !P0 | |
+| [D1](docs/tasks/D1.md) | Parsowanie TXT/PDF i przetwarzanie wstępne | ✅ DONE | 7/7 | !P0 | 2026-11-04 · korpus ma teraz 2 PDF-y |
 | [D2](docs/tasks/D2.md) | Repozytorium SQLite + przechowywanie plików | ⬜ TODO | 0/6 | !P0 | |
 | [D3](docs/tasks/D3.md) | Pipeline wczytywania (masowy import, postęp, błędy, start) | ⬜ TODO | 0/6 | !D1, !D2 | |
 | [D4](docs/tasks/D4.md) | Widok „Baza dokumentów” | ⬜ TODO | 0/7 | !P0, ~D3 | |
@@ -83,4 +83,6 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 | 2026-11-04 | O1 | Stack: Python ≥3.11 + Streamlit (multipage `pages/`), SQLite, scikit-learn, sentence-transformers, spaCy. |
 | 2026-11-04 | O1 | Języki dokumentów: PL + EN. Model semantyczny: `paraphrase-multilingual-MiniLM-L12-v2`. NER: `pl_core_news_md` / `en_core_web_md`, wybór po `Document.language`. |
 | 2026-11-04 | O1 | Kontrakty P0: `edt/models.py`, `edt/interfaces.py`, `edt/services.py` (fabryki per osoba), `edt/ui/nav.py`. Od teraz tylko zmiany wstecznie zgodne. |
-| 2026-11-04 | O1 | Git: branche `dev/o1..o3`, merge do `main` po ukończeniu etapu, bez obowiązkowego review. |
+| 2026-11-04 | O1 | Git: branche `dev/o1..o3`, merge do `main` po ukończeniu etapu, bez obowiązkowego review. Commity po angielsku. |
+| 2026-11-04 | O1 | [D1] Korpus `data/sample/` ma 12 plików: 10 TXT + 2 PDF (`pl_07_mikolaj_kopernik.pdf`, `en_05_vistula_river.pdf`). Fixture `sample_docs` w `tests/conftest.py` wczytuje pliki przez `parse_file` (zmiana wstecznie zgodna). |
+| 2026-11-04 | O1 | [D1] Nowe zależności: `charset-normalizer` (requirements.txt), `fpdf2` (requirements-dev.txt, tylko generator PDF). `Document.metadata` dla PDF: `title`, `author`, `subject`, `creator`, `producer`, `created` (ISO), `pages_without_text`; dla TXT: `encoding`. |

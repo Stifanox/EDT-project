@@ -4,6 +4,7 @@ pandas>=2.2
 
 # --- dokumenty (O1: D1) ---
 pypdf>=5.0
+charset-normalizer>=3.3     # zapasowe wykrywanie kodowania TXT
 
 # --- wyszukiwanie (O2: S1–S4) ---
 scikit-learn>=1.5
