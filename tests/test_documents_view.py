@@ -93,13 +93,13 @@ def _select(at, rows):
 
 def test_table_and_filters(page):
     assert len(page.dataframe[0].value) == 12
-    page.text_input[0].input("kopernik").run()
+    page.text_input(key="name-filter").input("kopernik").run()
     assert list(page.dataframe[0].value["Nazwa"]) == ["pl_07_mikolaj_kopernik.pdf"]
-    page.text_input[0].input("").run()
-    page.multiselect[0].select("pdf").run()
-    page.multiselect[1].select("en").run()
+    page.text_input(key="name-filter").input("").run()
+    page.multiselect(key="type-filter").select("pdf").run()
+    page.multiselect(key="lang-filter").select("en").run()
     assert list(page.dataframe[0].value["Nazwa"]) == ["en_05_vistula_river.pdf"]
-    assert page.caption[0].value.startswith("Wyświetlono 1 z 12")
+    assert any(c.value.startswith("Wyświetlono 1 z 12") for c in page.caption)
 
 
 def test_buttons_depend_on_selection(page):

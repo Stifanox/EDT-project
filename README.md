@@ -31,6 +31,17 @@ Przy pierwszym uruchomieniu (pusta baza) aplikacja sama wczytuje przykładowy ko
 Model semantyczny (`paraphrase-multilingual-MiniLM-L12-v2`, ok. 470 MB) pobiera się automatycznie przy
 pierwszym użyciu (etap S4).
 
+### Wiersz poleceń
+
+```bash
+python -m edt.cli import ~/korpus paczka.zip plik.pdf   # foldery (z podfolderami), ZIP, pliki
+python -m edt.cli list
+python -m edt.cli export-documents dokumenty.csv
+python -m edt.cli export-entities encje.json [--aggregated] [--doc ID]
+python -m edt.cli rebuild
+```
+Uruchomiona aplikacja zobaczy zmiany po odświeżeniu strony.
+
 ### Testy
 
 ```bash

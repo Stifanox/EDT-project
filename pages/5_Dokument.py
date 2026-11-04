@@ -6,6 +6,7 @@ pobieranie oryginału i usuwanie. Wejście: `nav.open_document(doc_id, highlight
 
 import streamlit as st
 
+from edt.exporting import entities_export
 from edt.models import EntityType, SourceType
 from edt.textproc import find_term_spans
 from edt.ui import nav
@@ -127,9 +128,18 @@ with tab_entities:
             key=f"entities-{doc.id}",
         )
         rows = event.selection.rows if event else []
-        if st.button("🏷️ Pokaż w widoku Encje NER", disabled=not rows):
+        x1, x2, x3 = st.columns([2, 1, 1])
+        if x1.button("🏷️ Pokaż w widoku Encje NER", disabled=not rows):
             row = table.iloc[rows[0]]
             nav.open_entity(row["key"], row["label"])
+        stem = doc.name.rsplit(".", 1)[0]
+        for col, fmt in ((x2, "csv"), (x3, "json")):
+            col.download_button(
+                f"⬇️ Encje ({fmt.upper()})",
+                data=lambda fmt=fmt: entities_export([doc], services.entities, fmt),
+                file_name=f"{stem}_encje.{fmt}",
+                mime="text/csv" if fmt == "csv" else "application/json", width="stretch",
+            )
 
 # --------------------------------------------------------------------------- #
 # Metadane, pobieranie, usuwanie

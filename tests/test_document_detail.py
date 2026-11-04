@@ -123,7 +123,8 @@ def test_shows_selected_document_with_metadata(services):
     assert dict((m.label, m.value) for m in at.metric)["Strony"] == "3"
     meta = at.table[0].value
     assert "Mikołaj Kopernik i przewrót heliocentryczny" in meta.to_string()
-    assert len(at.get("download_button")) == 2
+    labels = {b.label for b in at.get("download_button")}
+    assert {"⬇️ Pobierz oryginał", "⬇️ Pobierz wyodrębniony tekst"} <= labels
 
 
 def test_entities_highlighted_and_filterable(services):
@@ -187,7 +188,7 @@ def test_missing_original_disables_download(services):
     doc = doc_by_name(services, "en_03_ai_healthcare.txt")
     services.files.delete(doc.id)
     at = open_doc(doc.id)
-    assert len(at.get("download_button")) == 1
+    assert "⬇️ Pobierz oryginał" not in {b.label for b in at.get("download_button")}
     assert next(b for b in at.button if b.label == "⬇️ Pobierz oryginał").disabled
 
 

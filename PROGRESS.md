@@ -11,7 +11,7 @@
 
 | Osoba | Zakres | Etapy ukończone |
 |-------|--------|-----------------|
-| O1 | Fundament, dokumenty, widoki Baza/Dokument | 6 / 7 |
+| O1 | Fundament, dokumenty, widoki Baza/Dokument | 7 / 7 ✅ |
 | O2 | Wyszukiwanie i porównanie rankingów | 0 / 7 |
 | O3 | NER, encje, statystyki | 0 / 6 |
 | Wszyscy | Integracja, raport | 0 / 2 |
@@ -36,7 +36,7 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 | [D3](docs/tasks/D3.md) | Pipeline wczytywania (masowy import, postęp, błędy, start) | ✅ DONE | 6/6 | !D1, !D2 | 2026-11-04 · `ingest_many`, odporność na błędy indekserów |
 | [D4](docs/tasks/D4.md) | Widok „Baza dokumentów” | ✅ DONE | 7/7 | !P0, ~D3 | 2026-11-04 · wzór testów GUI: `tests/test_documents_view.py` |
 | [D5](docs/tasks/D5.md) | Widok „Szczegóły dokumentu” | ✅ DONE | 7/7 | !P0, ~N3 | 2026-11-04 · `nav.open_entity` czeka na obsługę w N4 |
-| [D6](docs/tasks/D6.md) | (opcjonalnie) Import folderu, eksport, filtry metadanych | ⬜ TODO | 0/4 | ~D4 | |
+| [D6](docs/tasks/D6.md) | (opcjonalnie) Import folderu, eksport, filtry metadanych | ✅ DONE | 4/4 | ~D4 | 2026-11-04 · ZIP/folder, CSV/JSON, `python -m edt.cli` |
 
 ## O2 – Wyszukiwanie (właściciel: O2)
 
@@ -92,3 +92,6 @@ pracują równolegle. Kolejność wewnątrz sekcji jest zalecana. Szczegóły: [
 | 2026-11-04 | O1 | [D3] Nowe w `AppServices` (wstecznie zgodne): `ingest_many(files, on_progress) -> IngestReport`, pola `failures` i `stale_indexers`, `rebuild_indexes(only_stale=False) -> list[IndexerFailure]`, `add_document` zwraca listę błędów. `IngestResult` ma pola `warnings` i `seconds`. |
 | 2026-11-04 | O1 | [D3] **Dla O2/O3 (indeksery):** wyjątek z `add_document`/`remove_document`/`rebuild` nie wywraca już aplikacji. Jest logowany, użytkownik dostaje ostrzeżenie, a indekser zostaje oznaczony jako nieaktualny do czasu `rebuild_indexes()`. Dlatego `rebuild(docs)` musi być **idempotentny** i doprowadzać indeks do stanu zgodnego z `docs`. `remove_document` może dostać id, którego indeks nie zna (ma wtedy nic nie robić). |
 | 2026-11-04 | O1 | [D5] `edt/ui/nav.py` (wspólny): nowe `open_entity(key, label)`, `selected_entity() -> (key, EntityType) \| None`, `clear_selected_entity()`. Klucz session_state: `selected_entity` = `{"key": str, "label": str}`. |
+| 2026-11-04 | O1 | [D6] `edt/ui/state.get_services()` (wspólny) przy każdym przebiegu strony wywołuje `AppServices.sync_with_repository()`. Dokumenty dodane lub usunięte innym procesem (CLI) trafiają do indeksów przez zwykłe `add_document`/`remove_document`. `get_services.clear()` działa jak wcześniej. |
+| 2026-11-04 | O1 | [D6] Nowe: `edt/exporting.py` (eksport CSV/JSON dokumentów i encji, przyda się w X2), `edt/cli.py`, `edt/ingest/sources.py`. `ingest_many` czyta pliki leniwie, gdy `files` ma `len()`. |
+

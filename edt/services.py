@@ -147,6 +147,8 @@ class AppServices:
     files: FileStore | None = None  # oryginały plików (None => nie przechowujemy)
     failures: list[IndexerFailure] = field(default_factory=list)  # historia błędów indekserów
     stale_indexers: set[str] = field(default_factory=set)         # wymagają rebuild_indexes()
+    # id dokumentów, o których indeksery wiedzą (do synchronizacji z bazą zmienianą z zewnątrz)
+    indexed_ids: set[str] = field(default_factory=set, repr=False)
 
     @property
     def indexers(self) -> list[DocumentIndexer]:
@@ -229,6 +231,7 @@ class AppServices:
             logger.exception("Nie zapisano %s w bazie", filename)
             return IngestResult(filename, error=f"Błąd zapisu w bazie dokumentów: {exc}")
 
+        self.indexed_ids.add(doc.id)
         result = IngestResult(filename, document=doc)
         if self.files is not None:
             try:
@@ -254,14 +257,17 @@ class AppServices:
         on_progress: ProgressCallback | None = None,
     ) -> IngestReport:
         """Import wielu plików. `on_progress(i, n, filename)` po każdym pliku (i = 1..n).
-        Duplikaty w obrębie tej samej paczki też są wykrywane."""
-        items = list(files)
+        Duplikaty w obrębie tej samej paczki też są wykrywane. Jeśli `files` ma `len()`
+        (lista, `FileBatch`), pliki są czytane leniwie – bez ładowania całej paczki do pamięci."""
+        if not hasattr(files, "__len__"):
+            files = list(files)
+        total = len(files)  # type: ignore[arg-type]
         report = IngestReport()
         started = time.perf_counter()
-        for i, (filename, data) in enumerate(items, start=1):
+        for i, (filename, data) in enumerate(files, start=1):
             report.results.append(self.ingest_file(filename, data))
             if on_progress is not None:
-                on_progress(i, len(items), filename)
+                on_progress(i, total, filename)
         report.seconds = time.perf_counter() - started
         logger.info("Import zakończony: %s", report.summary())
         return report
@@ -269,6 +275,7 @@ class AppServices:
     def add_document(self, doc: Document) -> list[IndexerFailure]:
         """Dodaje gotowy `Document` (bez parsowania). Zwraca błędy indekserów."""
         self.repository.add(doc)
+        self.indexed_ids.add(doc.id)
         return self._notify("add", doc)
 
     def delete_document(self, doc_id: str) -> bool:
@@ -276,6 +283,7 @@ class AppServices:
         Sprzątanie indeksów/plików wykonuje się zawsze (idempotentnie), nawet gdy
         rekordu już nie ma w bazie. Zwraca True, jeśli rekord był w bazie."""
         deleted = self.repository.delete(doc_id)
+        self.indexed_ids.discard(doc_id)
         self._notify("remove", doc_id)
         if self.files is not None:
             try:
@@ -297,6 +305,7 @@ class AppServices:
         (np. cache embeddingów / encji). `only_stale=True` – tylko indeksery po błędzie."""
         started = time.perf_counter()
         docs = self.repository.list()
+        self.indexed_ids = {d.id for d in docs}
         failures = []
         for indexer in self.indexers:
             name = indexer_name(indexer)
@@ -311,6 +320,26 @@ class AppServices:
         logger.info("Przebudowano indeksy (%d dokumentów) w %.2f s, błędy: %d",
                     len(docs), time.perf_counter() - started, len(failures))
         return failures
+
+    def _repository_ids(self) -> set[str]:
+        ids = getattr(self.repository, "ids", None)  # szybka ścieżka (SQLite: bez treści)
+        return ids() if callable(ids) else {d.id for d in self.repository.list()}
+
+    def sync_with_repository(self) -> tuple[int, int]:
+        """Dogania indeksy, gdy baza została zmieniona przez inny proces (np. `python -m edt.cli
+        import`, druga karta przeglądarki to ten sam proces – jej nie dotyczy).
+        Zwraca (dodane, usunięte). Tanie, gdy nic się nie zmieniło – jedno zapytanie o id."""
+        ids = self._repository_ids()
+        added, removed = ids - self.indexed_ids, self.indexed_ids - ids
+        for doc_id in removed:
+            self._notify("remove", doc_id)
+        for doc_id in added:
+            if (doc := self.repository.get(doc_id)) is not None:
+                self._notify("add", doc)
+        self.indexed_ids = ids
+        if added or removed:
+            logger.info("Synchronizacja z bazą: +%d / -%d dokumentów", len(added), len(removed))
+        return len(added), len(removed)
 
     # --- wyszukiwanie ------------------------------------------------------ #
     def search(

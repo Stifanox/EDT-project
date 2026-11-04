@@ -1,7 +1,11 @@
-"""Widok: Baza dokumentów (właściciel: O1, etap D4) – dodawanie, przeglądanie, usuwanie."""
+"""Widok: Baza dokumentów (właściciel: O1, etapy D4, D6) – dodawanie (pliki, ZIP, folder),
+przeglądanie, usuwanie, eksport."""
 
 import streamlit as st
 
+from edt.exporting import documents_csv, entities_export
+from edt.ingest import IngestError
+from edt.ingest.sources import folder_batch, zip_batch
 from edt.models import SourceType
 from edt.ui import nav
 from edt.ui.documents_view import (
@@ -25,24 +29,61 @@ st.title("📁 Baza dokumentów")
 # --------------------------------------------------------------------------- #
 # Dodawanie
 # --------------------------------------------------------------------------- #
-with st.expander("➕ Dodaj dokumenty", expanded=services.repository.count() == 0):
-    uploaded = st.file_uploader(
-        "Pliki TXT lub PDF", type=["txt", "pdf"], accept_multiple_files=True,
-        key=f"uploader-{state.upload_key}",
+def run_import(files, skipped=()) -> None:
+    """Import z paskiem postępu; raport zostaje w session_state i jest pokazywany po rerun."""
+    bar = st.progress(0.0, text="Wczytywanie…")
+    report = services.ingest_many(
+        files, on_progress=lambda i, n, name: bar.progress(i / n, text=f"{i}/{n}: {name}")
     )
-    if st.button("Wczytaj", type="primary", disabled=not uploaded):
-        bar = st.progress(0.0, text="Wczytywanie…")
-        state.last_report = services.ingest_many(
-            ((f.name, f.getvalue()) for f in uploaded),
-            on_progress=lambda i, n, name: bar.progress(i / n, text=f"{i}/{n}: {name}"),
+    state.last_report = report
+    state.last_skipped = list(skipped)
+    state.upload_key += 1
+    st.rerun()
+
+
+with st.expander("➕ Dodaj dokumenty", expanded=services.repository.count() == 0):
+    t_files, t_zip, t_folder = st.tabs(["Pliki", "Archiwum ZIP", "Folder na dysku"])
+    with t_files:
+        uploaded = st.file_uploader(
+            "Pliki TXT lub PDF", type=["txt", "pdf"], accept_multiple_files=True,
+            key=f"uploader-{state.upload_key}",
         )
-        state.upload_key += 1
-        st.rerun()
+        if st.button("Wczytaj", type="primary", disabled=not uploaded):
+            run_import([(f.name, f.getvalue()) for f in uploaded])
+    with t_zip:
+        archive = st.file_uploader("Archiwum ZIP z plikami TXT/PDF (także w podfolderach)",
+                                   type=["zip"], key=f"zip-{state.upload_key}")
+        if st.button("Wczytaj archiwum", type="primary", disabled=archive is None):
+            try:
+                batch = zip_batch(archive.getvalue())
+            except IngestError as exc:
+                st.error(str(exc), icon="❌")
+            else:
+                run_import(batch, batch.skipped)
+    with t_folder:
+        st.caption("Folder na komputerze, na którym działa aplikacja (praca lokalna).")
+        folder = st.text_input("Ścieżka do folderu", placeholder="/home/…/dokumenty",
+                               key="folder-path")
+        recursive = st.checkbox("Z podfolderami", value=True, key="folder-recursive")
+        if st.button("Wczytaj folder", type="primary", disabled=not folder.strip()):
+            try:
+                batch = folder_batch(folder.strip(), recursive)
+            except IngestError as exc:
+                st.error(str(exc), icon="❌")
+            else:
+                if len(batch) == 0:
+                    st.warning("W folderze nie ma plików TXT ani PDF.", icon="📭")
+                else:
+                    run_import(batch, batch.skipped)
 
 if report := state.get("last_report"):
     render_ingest_report(report)
+    if skipped := state.get("last_skipped"):
+        st.caption(f"Pominięto {len(skipped)} plików w nieobsługiwanym formacie: "
+                   + ", ".join(skipped[:10]) + (" …" if len(skipped) > 10 else ""))
     if st.button("Ukryj raport", key="hide-report"):
-        del state.last_report
+        state.pop("last_report", None)
+        state.pop("last_skipped", None)
         st.rerun()
 
 if deleted_msg := state.pop("deleted_msg", None):
@@ -57,10 +98,12 @@ if not all_docs:
     st.stop()
 
 f1, f2, f3 = st.columns([3, 1, 1])
-name_query = f1.text_input("Szukaj po nazwie", placeholder="np. kopernik")
-types = f2.multiselect("Typ", [t.value for t in SourceType], format_func=str.upper)
+name_query = f1.text_input("Szukaj po nazwie", placeholder="np. kopernik", key="name-filter")
+types = f2.multiselect("Typ", [t.value for t in SourceType], format_func=str.upper,
+                       key="type-filter")
 present_langs = sorted({d.language for d in all_docs})
-langs = f3.multiselect("Język", present_langs, format_func=lambda c: LANGUAGE_LABELS.get(c, c))
+langs = f3.multiselect("Język", present_langs, format_func=lambda c: LANGUAGE_LABELS.get(c, c),
+                       key="lang-filter")
 
 docs = filter_documents(all_docs, name_query, types, langs)
 st.caption(f"Wyświetlono {len(docs)} z {len(all_docs)} dokumentów · zaznacz wiersze, "
@@ -113,6 +156,32 @@ if b2.button(f"🗑️ Usuń ({len(selected)})", disabled=not selected, width="s
     state.pending_delete = [d.id for d in selected]
 if state.get("pending_delete"):
     confirm_delete(state.pending_delete)
+
+# --------------------------------------------------------------------------- #
+# Eksport (D6) – dane liczone dopiero po kliknięciu (download_button przyjmuje funkcję)
+# --------------------------------------------------------------------------- #
+with st.expander("⬇️ Eksport"):
+    st.caption(f"Eksport dotyczy wyświetlonych dokumentów ({len(docs)}), z wyjątkiem "
+               "zestawienia encji, które obejmuje cały korpus.")
+    e1, e2, e3 = st.columns(3)
+    e1.download_button(
+        "📄 Lista dokumentów (CSV)",
+        data=lambda: documents_csv(docs, lambda i: len(services.entities.mentions(i))),
+        file_name="dokumenty.csv", mime="text/csv", width="stretch",
+    )
+    fmt = e2.radio("Format encji", ["csv", "json"], horizontal=True, format_func=str.upper,
+                   key="entities-format")
+    mime = "text/csv" if fmt == "csv" else "application/json"
+    e2.download_button(
+        "🏷️ Wystąpienia encji (z kontekstem)",
+        data=lambda: entities_export(docs, services.entities, fmt),
+        file_name=f"encje_wystapienia.{fmt}", mime=mime, width="stretch",
+    )
+    e3.download_button(
+        "📊 Zestawienie encji (korpus)",
+        data=lambda: entities_export(all_docs, services.entities, fmt, aggregated=True),
+        file_name=f"encje_zestawienie.{fmt}", mime=mime, width="stretch",
+    )
 
 # --------------------------------------------------------------------------- #
 # Narzędzia
