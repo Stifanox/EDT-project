@@ -1,16 +1,18 @@
 """Logika i komponenty widoków dokumentów (właściciel: O1; D4, D5).
 
-Funkcje `filter_documents`, `documents_frame`, `format_size` nie zależą od Streamlit,
+Funkcje logiki (filtry, tabele, metadane, podział na sekcje) nie zależą od Streamlit,
 więc da się je testować jednostkowo. Funkcje `render_*` rysują elementy GUI.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Collection, Iterable
+from collections import Counter
+from collections.abc import Callable, Collection, Iterable, Sequence
+from dataclasses import replace
 
 import pandas as pd
 
-from edt.models import Document, SourceType
+from edt.models import Document, EntityMention, EntityType, SourceType
 
 LANGUAGE_LABELS: dict[str, str] = {"pl": "polski", "en": "angielski", "unknown": "nieznany"}
 
@@ -75,6 +77,93 @@ def documents_frame(
 def selected_documents(docs: list[Document], row_positions: Iterable[int]) -> list[Document]:
     """Zaznaczone wiersze `st.dataframe` (pozycje w oryginalnej ramce) -> dokumenty."""
     return [docs[i] for i in row_positions if 0 <= i < len(docs)]
+
+
+# --------------------------------------------------------------------------- #
+# Widok szczegółów dokumentu (D5)
+# --------------------------------------------------------------------------- #
+_PDF_META_LABELS = {
+    "title": "Tytuł (PDF)", "author": "Autor (PDF)", "subject": "Temat (PDF)",
+    "creator": "Program tworzący", "producer": "Producent PDF", "created": "Utworzono (PDF)",
+    "pages_without_text": "Strony bez tekstu", "encoding": "Kodowanie",
+}
+
+
+def document_metadata_rows(doc: Document) -> list[tuple[str, str]]:
+    """Metadane dokumentu jako pary (etykieta, wartość) do wyświetlenia."""
+    rows = [
+        ("Nazwa pliku", doc.name),
+        ("Typ", doc.source_type.value.upper()),
+        ("Język", language_label(doc.language)),
+        ("Rozmiar pliku", format_size(doc.size_bytes)),
+        ("Liczba stron", str(doc.num_pages) if doc.num_pages is not None else "–"),
+        ("Liczba słów", str(doc.num_words)),
+        ("Liczba znaków", str(doc.num_chars)),
+        ("Dodano", doc.added_at.astimezone().strftime("%Y-%m-%d %H:%M:%S")),
+        ("Identyfikator", doc.id),
+        ("SHA-256", doc.content_hash or "–"),
+    ]
+    for key, value in doc.metadata.items():
+        rows.append((_PDF_META_LABELS.get(key, key), str(value)))
+    return rows
+
+
+def document_entity_table(mentions: Iterable[EntityMention]) -> pd.DataFrame:
+    """Encje jednego dokumentu zgrupowane po (key, typ). Kolumny `key` i `label`
+    służą do nawigacji (ukryj je w GUI). Sortowanie: liczba wystąpień malejąco."""
+    forms: dict[tuple[str, str], Counter[str]] = {}
+    for m in mentions:
+        forms.setdefault((m.key, m.label.value), Counter())[m.text] += 1
+    rows = [
+        {"Encja": c.most_common(1)[0][0], "Typ": m_label, "Wystąpienia": sum(c.values()),
+         "key": key, "label": m_label}
+        for (key, m_label), c in forms.items()
+    ]
+    frame = pd.DataFrame(rows, columns=["Encja", "Typ", "Wystąpienia", "key", "label"])
+    if not frame.empty:
+        frame["Typ"] = [EntityType(v).label_pl for v in frame["label"]]
+        frame = frame.sort_values(["Wystąpienia", "Encja"], ascending=[False, True])
+    return frame.reset_index(drop=True)
+
+
+def split_into_sections(text: str, max_chars: int = 20_000) -> list[tuple[int, int]]:
+    """Dzieli długi tekst na sekcje (start, end) o długości <= max_chars, tnąc na granicy
+    akapitu, a w ostateczności linii lub spacji. Sekcje pokrywają cały tekst bez przerw."""
+    if len(text) <= max_chars:
+        return [(0, len(text))]
+    sections: list[tuple[int, int]] = []
+    start = 0
+    while start < len(text):
+        end = min(start + max_chars, len(text))
+        if end < len(text):
+            lower = start + max_chars // 2  # nie tniemy zbyt krótko
+            for sep in ("\n\n", "\n", " "):
+                cut = text.rfind(sep, lower, end)
+                if cut != -1:
+                    end = cut + len(sep)
+                    break
+        sections.append((start, end))
+        start = end
+    return sections
+
+
+def section_of(sections: Sequence[tuple[int, int]], offset: int) -> int:
+    """Indeks sekcji zawierającej dany offset (0, gdy poza zakresem)."""
+    return next((i for i, (s, e) in enumerate(sections) if s <= offset < e), 0)
+
+
+def mentions_in_section(
+    mentions: Iterable[EntityMention], start: int, end: int
+) -> list[EntityMention]:
+    """Encje leżące w całości w [start, end), z offsetami przesuniętymi do początku sekcji."""
+    return [replace(m, start=m.start - start, end=m.end - start)
+            for m in mentions if start <= m.start and m.end <= end]
+
+
+def spans_in_section(
+    spans: Iterable[tuple[int, int]], start: int, end: int
+) -> list[tuple[int, int]]:
+    return [(s - start, e - start) for s, e in spans if start <= s and e <= end]
 
 
 # --------------------------------------------------------------------------- #
